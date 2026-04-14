@@ -1,25 +1,29 @@
-# Script de Instalação: Steam Tools & GTA V (Cópia Exata do Manual)
+# Script Definitivo: Steam Tools + GTA V Legacy Manifests
 $ErrorActionPreference = 'SilentlyContinue'
+$ProgressPreference = 'SilentlyContinue'
 
 function Log($Type, $Message) {
     $fg = "White"; if ($Type -eq "OK") { $fg = "Green" } elseif ($Type -eq "INFO") { $fg = "Cyan" } elseif ($Type -eq "ERR") { $fg = "Red" } elseif ($Type -eq "WARN") { $fg = "Yellow" }
     Write-Host "[$Type] " -ForegroundColor $fg -NoNewline; Write-Host $Message
 }
 
+# --- BANNER ---
 Clear-Host
 Write-Host "      :::::::: ::::::::::: ::::::::::     :::     ::::    ::::  " -ForegroundColor Cyan
 Write-Host "    +#++:++#++    +#+     +#++:++#   +#++:++#++ +#+  +:+  +#+  " -ForegroundColor Blue
 Write-Host "      ==========================================================" -ForegroundColor DarkGray
+Write-Host "             INSTALLER: STEAM TOOLS & GTA V LEGACY              " -ForegroundColor White
+Write-Host "      ==========================================================" -ForegroundColor DarkGray
 
-# 1. ADMIN
+# 1. VERIFICAÇÃO DE ADMIN
 if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Log "ERR" "EXECUTE COMO ADMINISTRADOR!"; cmd /c pause; return
+    Log "ERR" "VOCE PRECISA EXECUTAR COMO ADMINISTRADOR!"; cmd /c pause; return
 }
 
-# 2. FECHAR STEAM COMPLETAMENTE (OBRIGATÓRIO)
-Log "WARN" "Fechando Steam..."
+# 2. FECHAR STEAM (Essencial para o manifest funcionar)
+Log "WARN" "Fechando o Steam..."
 taskkill /F /IM steam.exe /T > $null 2>&1
-Start-Sleep -Seconds 3
+Start-Sleep -Seconds 2
 
 # 3. CAMINHOS
 $steamPath = "C:\Program Files (x86)\Steam"
@@ -33,15 +37,15 @@ if (!(Test-Path $commonPath)) { New-Item -Path $commonPath -ItemType Directory -
 if (Test-Path $tempDir) { Remove-Item $tempDir -Recurse -Force | Out-Null }
 New-Item -Path $tempDir -ItemType Directory | Out-Null
 
-# 4. DOWNLOAD STEAM TOOLS
+# 4. DOWNLOAD E INSTALAÇÃO STEAM TOOLS
 Log "INFO" "Baixando Steam Tools..."
 $stUrl = "https://www.dropbox.com/scl/fi/rkffh5lriikh66p46zci6/st-setup-1.8.30-3.exe?rlkey=ru57xfxm4n8wu914wgils1use&st=jhumhix8&dl=1"
 Invoke-WebRequest -Uri $stUrl -OutFile "$tempDir\st.exe"
-Log "WARN" "Instale o Steam Tools agora. O script continuara apos voce FECHAR o instalador."
+Log "WARN" "Instale o Steam Tools e FECHE o instalador para continuar."
 Start-Process -FilePath "$tempDir\st.exe" -Wait
 
 # 5. DOWNLOAD DOS MANIFESTS (Links Diretos)
-Log "INFO" "Baixando arquivos .manifest e .lua..."
+Log "INFO" "Baixando arquivos de Manifest para Depotcache..."
 $manifests = @(
     @{ n="271590.lua"; u="https://www.dropbox.com/scl/fi/uxfpcdr6afzys54x8qbaw/271590.lua?rlkey=nfojbwrrq2awgycgo34zptn0b&st=173lsclt&dl=1" },
     @{ n="271591_6768057890420400504.manifest"; u="https://www.dropbox.com/scl/fi/e15cpv0skhyc08am2hife/271591_6768057890420400504.manifest?rlkey=sm6i1dv3ygz054qam1rtn1gxj&st=0nu7sd1h&dl=1" },
@@ -57,8 +61,8 @@ foreach ($m in $manifests) {
     Invoke-WebRequest -Uri $m.u -OutFile "$depotPath\$($m.n)"
 }
 
-# 6. CRIAR APPMANIFEST (Exatamente no formato que o Steam reconhece)
-Log "INFO" "Gerando registro de instalacao..."
+# 6. CRIAR APPMANIFEST (ESTADO: INSTALADO)
+Log "INFO" "Criando registro appmanifest_271590.acf..."
 $acfContent = @'
 "AppState"
 {
@@ -73,17 +77,15 @@ $acfContent = @'
 	"buildid"		"0"
 }
 '@
-# Salvar com codificação ANSI (Essencial para o Steam ler)
-[System.IO.File]::WriteAllLines("$appsPath\appmanifest_271590.acf", $acfContent, [System.Text.Encoding]::Default)
+# O segredo: Salvar com codificação ANSI (Encoding 1252)
+[System.IO.File]::WriteAllLines("$appsPath\appmanifest_271590.acf", $acfContent, [System.Text.Encoding]::GetEncoding(1252))
 
 # 7. LIMPEZA
 Remove-Item $tempDir -Recurse -Force | Out-Null
 
 Write-Host ""
-Log "OK" "ARQUIVOS COPIADOS!"
-Log "INFO" "1. Abra o Steam Tools."
-Log "INFO" "2. Adicione o AppID 271590 se ele nao estiver na lista."
-Log "INFO" "3. Clique em 'Unlock' ou 'Apply' no Steam Tools."
-Log "INFO" "4. Abra o Steam e o GTA V devera estar pronto para JOGAR."
+Log "OK" "TUDO INSTALADO!"
+Log "INFO" "1. Abra o Steam Tools e ative o GTA V."
+Log "INFO" "2. Abra o Steam e o jogo estara pronto."
 Log "INFO" "Pressione ENTER para fechar."
 cmd /c pause > $null
