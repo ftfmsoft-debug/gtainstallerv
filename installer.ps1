@@ -1,4 +1,4 @@
-# Script de Instalação: Steam Tools & GTA V Depot Manifests
+# Script de Instalação: Steam Tools & GTA V Depot Manifests (Versão Atualizada)
 $ErrorActionPreference = 'SilentlyContinue'
 $ProgressPreference = 'SilentlyContinue'
 
@@ -30,8 +30,8 @@ if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]:
     return
 }
 
-# 2. FECHAR STEAM (Necessário para reconhecer novos arquivos)
-Log "WARN" "Fechando o Steam para garantir a instalacao..."
+# 2. FECHAR STEAM
+Log "WARN" "Fechando o Steam para aplicar as mudancas..."
 Stop-Process -Name "Steam" -Force -ErrorAction SilentlyContinue
 
 # 3. CONFIGURAÇÃO DE CAMINHOS
@@ -48,19 +48,19 @@ New-Item -Path $tempDir -ItemType Directory | Out-Null
 Log "INFO" "Baixando Steam Tools..."
 $stUrl = "https://www.dropbox.com/scl/fi/rkffh5lriikh66p46zci6/st-setup-1.8.30-3.exe?rlkey=ru57xfxm4n8wu914wgils1use&st=jhumhix8&dl=1"
 Invoke-WebRequest -Uri $stUrl -OutFile "$tempDir\st.exe"
-Log "WARN" "Instale o Steam Tools agora. O script continuara apos voce fechar o instalador."
+Log "WARN" "Instale o Steam Tools e FECHE o instalador para continuar."
 $proc = Start-Process -FilePath "$tempDir\st.exe" -Wait -PassThru
 
-# 5. DOWNLOAD DOS MANIFESTS
-Log "INFO" "Instalando manifests no Depotcache..."
+# 5. DOWNLOAD DOS NOVOS MANIFESTS (Links Atualizados)
+Log "INFO" "Instalando novos manifests no Depotcache..."
 $manifests = @(
-    @{ n="271590.lua"; u="https://www.dropbox.com/scl/fi/2b3ivdjgykujloiu4fknt/271590.lua?rlkey=a1669qbo63vkzyhmaxcl16esa&st=n6kxh046&dl=1" },
-    @{ n="271591_6768057890420400504.manifest"; u="https://www.dropbox.com/scl/fi/zo6jtjuxvseou3dge5057/271591_6768057890420400504.manifest?rlkey=zwhidfuu9leoxeyi01et51v94&st=91uv2671&dl=1" },
-    @{ n="271592_8238436718767500927.manifest"; u="https://www.dropbox.com/scl/fi/6sznfot5eb4g8j10a0wm7/271592_8238436718767500927.manifest?rlkey=n58mc0grcgl095drgaodxxj0x&st=xe6uv0t3&dl=1" },
-    @{ n="271593_2967789647252082634.manifest"; u="https://www.dropbox.com/scl/fi/1lkdmuu6ql2g2i9phd9nm/271593_2967789647252082634.manifest?rlkey=3h4j65hmhwjzmnjyia9wumuqi&st=e9ld03gi&dl=1" },
-    @{ n="271594_8854874882423166314.manifest"; u="https://www.dropbox.com/scl/fi/wyffhxej965kx74g50pwv/271594_8854874882423166314.manifest?rlkey=n189lywe18z3jt1rx5tmpf8fm&st=vujog6ro&dl=1" },
-    @{ n="271595_1376135673068470825.manifest"; u="https://www.dropbox.com/scl/fi/ckrrqgcainu79i6o3d5df/271595_1376135673068470825.manifest?rlkey=tiyn9eycxf2ut4kz5ebv29v1p&st=f73mo5pu&dl=1" },
-    @{ n="1899671_274155245002712969.manifest"; u="https://www.dropbox.com/scl/fi/by2e8jdmgaxuqhqswj7dx/1899671_274155245002712969.manifest?rlkey=dh5s423z3y3gnhfqyez5okpi8&st=lsku86hy&dl=1" }
+    @{ n="271590.lua"; u="https://www.dropbox.com/scl/fi/uxfpcdr6afzys54x8qbaw/271590.lua?rlkey=nfojbwrrq2awgycgo34zptn0b&st=173lsclt&dl=1" },
+    @{ n="271591_6768057890420400504.manifest"; u="https://www.dropbox.com/scl/fi/e15cpv0skhyc08am2hife/271591_6768057890420400504.manifest?rlkey=sm6i1dv3ygz054qam1rtn1gxj&st=0nu7sd1h&dl=1" },
+    @{ n="271592_8238436718767500927.manifest"; u="https://www.dropbox.com/scl/fi/7qq1iydnv691bzsoywzx4/271592_8238436718767500927.manifest?rlkey=cy81g3u8o273an0h4j15roaam&st=6et8h98s&dl=1" },
+    @{ n="271593_2967789647252082634.manifest"; u="https://www.dropbox.com/scl/fi/iq5kx3d8wyrvvos5agffu/271593_2967789647252082634.manifest?rlkey=ubby7t99gflswnc06k6jczxp9&st=wtnpwfg8&dl=1" },
+    @{ n="271594_8854874882423166314.manifest"; u="https://www.dropbox.com/scl/fi/or4kr8dekqsycl0eb4lvv/271594_8854874882423166314.manifest?rlkey=jedaiel4io8d6zjzp0ilyrcgt&st=chg1txva&dl=1" },
+    @{ n="271595_1376135673068470825.manifest"; u="https://www.dropbox.com/scl/fi/ovgp2j5fbx761t02kplcs/271595_1376135673068470825.manifest?rlkey=128kqemi805ywfyrwr0wsuiad&st=zh2ro8iz&dl=1" },
+    @{ n="1899671_274155245002712969.manifest"; u="https://www.dropbox.com/scl/fi/s0u1vbc7ako4ejtmq112x/1899671_274155245002712969.manifest?rlkey=3ztek241eruynrgffemtgl57h&st=cej2d97l&dl=1" }
 )
 
 foreach ($file in $manifests) {
@@ -68,8 +68,8 @@ foreach ($file in $manifests) {
     Invoke-WebRequest -Uri $file.u -OutFile "$depotPath\$($file.n)"
 }
 
-# 6. CRIAR APPMANIFEST DO GTA V (Para o jogo aparecer no Steam)
-Log "INFO" "Registrando GTA V no Steam..."
+# 6. CRIAR APPMANIFEST DO GTA V
+Log "INFO" "Registrando jogo na biblioteca do Steam..."
 $acfContent = '"AppState"{"appid" "271590" "Universe" "1" "StateFlags" "4" "installdir" "Grand Theft Auto V"}'
 $acfContent | Out-File -FilePath "$appsPath\appmanifest_271590.acf" -Encoding ASCII
 
@@ -78,6 +78,6 @@ if (Test-Path $tempDir) { Remove-Item -Recurse -Force $tempDir }
 
 Write-Host ""
 Log "OK" "INSTALACAO CONCLUIDA COM SUCESSO!"
-Log "INFO" "Reinicie o Steam e o jogo aparecera na sua biblioteca."
+Log "INFO" "Abra o Steam e o GTA V aparecera como instalado."
 Log "INFO" "Pressione qualquer tecla para fechar."
 cmd /c pause > $null
