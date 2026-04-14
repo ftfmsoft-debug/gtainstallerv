@@ -1,11 +1,19 @@
-# Script de Instalação Robusto: Steam Tools & GTA V Depot Manifests
-$ErrorActionPreference = 'Stop' # Agora ele para e mostra o erro se algo falhar
-$ProgressPreference = 'Continue'
+# Script de Instalação: Steam Tools & GTA V Depot Manifests
+$ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
 
+# Função Log ultra-segura
 function Log {
     param ([string]$Type, [string]$Message)
-    $colors = @{"OK"="Green"; "INFO"="Cyan"; "ERR"="Red"; "WARN"="Yellow"}
-    Write-Host "[$Type] $Message" -ForegroundColor $colors[$Type.ToUpper()]
+    $Type = $Type.ToUpper()
+    $fg = "White"
+    if ($Type -eq "OK") { $fg = "Green" }
+    elseif ($Type -eq "INFO") { $fg = "Cyan" }
+    elseif ($Type -eq "ERR") { $fg = "Red" }
+    elseif ($Type -eq "WARN") { $fg = "Yellow" }
+    
+    Write-Host "[$Type] " -ForegroundColor $fg -NoNewline
+    Write-Host $Message
 }
 
 try {
@@ -21,20 +29,19 @@ try {
     Write-Host ""
 
     # 1. VERIFICAÇÃO DE ADMIN
-    Log "INFO" "Verificando privilegios..."
     if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-        throw "VOCE PRECISA EXECUTAR COMO ADMINISTRADOR!"
+        Log "ERR" "VOCE PRECISA EXECUTAR COMO ADMINISTRADOR!"
+        Read-Host "Pressione Enter para sair"; return
     }
 
     # 2. CONFIGURAÇÃO DE CAMINHOS
     $depotPath = "C:\Program Files (x86)\Steam\depotcache"
     if (!(Test-Path $depotPath)) { 
-        Log "WARN" "Criando pasta depotcache..."
         New-Item -Path $depotPath -ItemType Directory -Force | Out-Null 
     }
 
     $tempDir = "$env:TEMP\GtaToolsInstaller"
-    if (Test-Path $tempDir) { Remove-Item $tempDir -Recurse -Force }
+    if (Test-Path $tempDir) { Remove-Item $tempDir -Recurse -Force -ErrorAction SilentlyContinue }
     New-Item -Path $tempDir -ItemType Directory | Out-Null
 
     # 3. LINKS
@@ -51,35 +58,32 @@ try {
 
     # 4. INSTALAÇÃO STEAM TOOLS
     Log "INFO" "Baixando Steam Tools..."
-    Invoke-WebRequest -Uri $stUrl -OutFile "$tempDir\st.exe" -TimeoutSec 60
-    Log "WARN" "Instale o Steam Tools agora. O script aguardara voce fechar o instalador."
-    $process = Start-Process -FilePath "$tempDir\st.exe" -Wait -PassThru
+    Invoke-WebRequest -Uri $stUrl -OutFile "$tempDir\st.exe"
+    Log "WARN" "Instale o Steam Tools agora. O script continuara apos voce fechar o instalador."
+    Start-Process -FilePath "$tempDir\st.exe" -Wait
     Log "OK" "Steam Tools concluido."
 
     # 5. DOWNLOAD MANIFESTS
-    Log "INFO" "Iniciando download dos manifests para o Depotcache..."
+    Log "INFO" "Instalando manifests no Depotcache..."
     foreach ($file in $manifests) {
         Log "INFO" "Baixando: $($file.name)"
-        Invoke-WebRequest -Uri $file.url -OutFile "$depotPath\$($file.name)" -TimeoutSec 30
+        Invoke-WebRequest -Uri $file.url -OutFile "$depotPath\$($file.name)"
     }
-    Log "OK" "Todos os manifests foram salvos em depotcache."
+    Log "OK" "Todos os arquivos foram salvos com sucesso!"
 
     # 6. FINALIZAÇÃO
     Log "INFO" "Limpando arquivos temporarios..."
-    Remove-Item -Recurse -Force $tempDir
+    Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue
     
     Write-Host ""
     Log "OK" "INSTALACAO CONCLUIDA COM SUCESSO!"
     Log "INFO" "Pressione ENTER para fechar."
     Read-Host ""
-    exit
 
 } catch {
     Write-Host ""
-    Log "ERR" "OCORREU UM ERRO FATAL:"
-    Log "ERR" $_.Exception.Message
+    Log "ERR" "OCORREU UM ERRO DURANTE A INSTALACAO:"
+    Write-Host $_.Exception.Message -ForegroundColor Red
     Write-Host ""
-    Log "INFO" "O script foi interrompido para evitar danos."
-    Read-Host "Pressione ENTER para fechar e verificar o erro acima"
-    exit
+    Read-Host "Pressione ENTER para sair"
 }
