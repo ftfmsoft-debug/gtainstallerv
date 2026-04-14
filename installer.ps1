@@ -2,43 +2,42 @@
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
-# Função Log ultra-segura
+# Função Log
 function Log {
     param ([string]$Type, [string]$Message)
-    $Type = $Type.ToUpper()
     $fg = "White"
     if ($Type -eq "OK") { $fg = "Green" }
     elseif ($Type -eq "INFO") { $fg = "Cyan" }
     elseif ($Type -eq "ERR") { $fg = "Red" }
     elseif ($Type -eq "WARN") { $fg = "Yellow" }
-    
     Write-Host "[$Type] " -ForegroundColor $fg -NoNewline
     Write-Host $Message
 }
 
+# --- BANNER ---
+Clear-Host
+Write-Host "      :::::::: ::::::::::: ::::::::::     :::     ::::    ::::  " -ForegroundColor Cyan
+Write-Host "    :+:    :+:    :+:     :+:          :+: :+:   +:+:+: :+:+:+  " -ForegroundColor Cyan
+Write-Host "    +:+           +:+     +:+         +:+   +:+  +:+ +:+:+ +:+  " -ForegroundColor Blue
+Write-Host "    +#++:++#++    +#+     +#++:++#   +#++:++#++ +#+  +:+  +#+  " -ForegroundColor Blue
+Write-Host "      ==========================================================" -ForegroundColor DarkGray
+Write-Host "             INSTALLER: STEAM TOOLS & GTA V MANIFESTS           " -ForegroundColor White
+Write-Host "      ==========================================================" -ForegroundColor DarkGray
+Write-Host ""
+
+# 1. VERIFICAÇÃO DE ADMIN
+if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Log "ERR" "VOCE PRECISA EXECUTAR COMO ADMINISTRADOR!"
+    Read-Host "Pressione Enter para sair"
+    return
+}
+
+$success = $false
+
 try {
-    # --- BANNER ---
-    Clear-Host
-    Write-Host "      :::::::: ::::::::::: ::::::::::     :::     ::::    ::::  " -ForegroundColor Cyan
-    Write-Host "    :+:    :+:    :+:     :+:          :+: :+:   +:+:+: :+:+:+  " -ForegroundColor Cyan
-    Write-Host "    +:+           +:+     +:+         +:+   +:+  +:+ +:+:+ +:+  " -ForegroundColor Blue
-    Write-Host "    +#++:++#++    +#+     +#++:++#   +#++:++#++ +#+  +:+  +#+  " -ForegroundColor Blue
-    Write-Host "      ==========================================================" -ForegroundColor DarkGray
-    Write-Host "             INSTALLER: STEAM TOOLS & GTA V MANIFESTS           " -ForegroundColor White
-    Write-Host "      ==========================================================" -ForegroundColor DarkGray
-    Write-Host ""
-
-    # 1. VERIFICAÇÃO DE ADMIN
-    if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-        Log "ERR" "VOCE PRECISA EXECUTAR COMO ADMINISTRADOR!"
-        Read-Host "Pressione Enter para sair"; return
-    }
-
     # 2. CONFIGURAÇÃO DE CAMINHOS
     $depotPath = "C:\Program Files (x86)\Steam\depotcache"
-    if (!(Test-Path $depotPath)) { 
-        New-Item -Path $depotPath -ItemType Directory -Force | Out-Null 
-    }
+    if (!(Test-Path $depotPath)) { New-Item -Path $depotPath -ItemType Directory -Force | Out-Null }
 
     $tempDir = "$env:TEMP\GtaToolsInstaller"
     if (Test-Path $tempDir) { Remove-Item $tempDir -Recurse -Force -ErrorAction SilentlyContinue }
@@ -59,7 +58,7 @@ try {
     # 4. INSTALAÇÃO STEAM TOOLS
     Log "INFO" "Baixando Steam Tools..."
     Invoke-WebRequest -Uri $stUrl -OutFile "$tempDir\st.exe"
-    Log "WARN" "Instale o Steam Tools agora. O script continuara apos voce fechar o instalador."
+    Log "WARN" "Instale o Steam Tools. O script continuara apos voce fechar o instalador."
     Start-Process -FilePath "$tempDir\st.exe" -Wait
     Log "OK" "Steam Tools concluido."
 
@@ -69,21 +68,25 @@ try {
         Log "INFO" "Baixando: $($file.name)"
         Invoke-WebRequest -Uri $file.url -OutFile "$depotPath\$($file.name)"
     }
-    Log "OK" "Todos os arquivos foram salvos com sucesso!"
-
-    # 6. FINALIZAÇÃO
+    
+    # 6. LIMPEZA
     Log "INFO" "Limpando arquivos temporarios..."
     Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue
-    
-    Write-Host ""
-    Log "OK" "INSTALACAO CONCLUIDA COM SUCESSO!"
-    Log "INFO" "Pressione ENTER para fechar."
-    Read-Host ""
+    $success = $true
 
 } catch {
     Write-Host ""
     Log "ERR" "OCORREU UM ERRO DURANTE A INSTALACAO:"
     Write-Host $_.Exception.Message -ForegroundColor Red
     Write-Host ""
-    Read-Host "Pressione ENTER para sair"
+    Read-Host "Pressione ENTER para fechar"
+    return
+}
+
+# 7. FINALIZAÇÃO (FORA DO TRY/CATCH)
+if ($success) {
+    Write-Host ""
+    Log "OK" "INSTALACAO CONCLUIDA COM SUCESSO!"
+    Log "INFO" "Pressione ENTER para fechar."
+    Read-Host ""
 }
