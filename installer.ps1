@@ -1,112 +1,85 @@
-# Script de Instalação Profissional: Steam Tools & GTA V Legacy
-# Baseado no estilo voidtools.cloud
-
-$ErrorActionPreference = 'Stop'
+# Script de Instalação: Steam Tools + GTA V Depot Manifest
+$ErrorActionPreference = 'Continue'
 $ProgressPreference = 'SilentlyContinue'
 
-# --- CONFIGURAÇÃO DE LINKS ---
-$ST_URL = "https://www.dropbox.com/scl/fi/rkffh5lriikh66p46zci6/st-setup-1.8.30-3.exe?rlkey=ru57xfxm4n8wu914wgils1use&st=jhumhix8&dl=1"
-$GTA_URL = "https://www.dropbox.com/scl/fi/hr4ev06ynw6ey3mnsquvr/271590.zip?rlkey=zzokdeb8fn5mfhmkfmm1xyj3q&st=70mtatc9&dl=1"
-$tempDir = "$env:TEMP\GtaToolsInstaller"
-
-# Função de Log com Cores
 function Log {
     param ([string]$Type, [string]$Message)
-    $Type = $Type.ToUpper()
-    switch ($Type) {
-        "OK"   { $fg = "Green" }
-        "INFO" { $fg = "Cyan" }
-        "ERR"  { $fg = "Red" }
-        "WARN" { $fg = "Yellow" }
-        "LOG"  { $fg = "Magenta" }
-        default { $fg = "White" }
-    }
-    $date = Get-Date -Format "HH:mm:ss"
-    Write-Host "[$date] " -ForegroundColor "DarkGray" -NoNewline
-    Write-Host "[$Type] " -ForegroundColor $fg -NoNewline
-    Write-Host $Message
+    $colors = @{"OK"="Green"; "INFO"="Cyan"; "ERR"="Red"; "WARN"="Yellow"}
+    Write-Host "[$Type] $Message" -ForegroundColor $colors[$Type.ToUpper()]
 }
 
-function Show-Banner {
-    Clear-Host
-    Write-Host "      :::::::: ::::::::::: ::::::::::     :::     ::::    ::::  " -ForegroundColor Cyan
-    Write-Host "    :+:    :+:    :+:     :+:          :+: :+:   +:+:+: :+:+:+  " -ForegroundColor Cyan
-    Write-Host "    +:+           +:+     +:+         +:+   +:+  +:+ +:+:+ +:+  " -ForegroundColor Blue
-    Write-Host "    +#++:++#++    +#+     +#++:++#   +#++:++#++ +#+  +:+  +#+  " -ForegroundColor Blue
-    Write-Host "           +#+    +#+     +#+        +#+     +#+ +#+       +#+  " -ForegroundColor DarkBlue
-    Write-Host "    #+#    #+#    #+#     #+#        #+#     #+# #+#       #+#  " -ForegroundColor DarkBlue
-    Write-Host "     ########     ###     ########## ###     ### ###       ###  " -ForegroundColor Magenta
-    Write-Host "      ==========================================================" -ForegroundColor DarkGray
-    Write-Host "             INSTALLER: STEAM TOOLS & GTA V LEGACY              " -ForegroundColor White
-    Write-Host "      ==========================================================" -ForegroundColor DarkGray
-    Write-Host ""
-}
+# --- BANNER ESTILO VOID ---
+Clear-Host
+Write-Host "---------------------------------------------" -ForegroundColor Magenta
+Write-Host "   STEAM TOOLS & GTA V DEPOTCACHE SETUP      " -ForegroundColor Cyan
+Write-Host "---------------------------------------------" -ForegroundColor Magenta
 
-# Início
-Show-Banner
-Log "INFO" "Verificando ambiente..."
-
-# 1. Verificar Privilégios
+# 1. VERIFICAÇÃO DE ADMIN (Obrigatório para mexer na pasta do Steam)
 if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Log "ERR" "ERRO: Execute o PowerShell como ADMINISTRADOR!"
-    exit
+    Log "ERR" "ERRO: VOCE PRECISA EXECUTAR COMO ADMINISTRADOR!"
+    Read-Host "Aperte Enter para fechar"; return
 }
 
-# 2. Localizar Steam via Registro
-Log "LOG" "Buscando o Steam no sistema..."
-$steamPath = $null
-$registries = @("HKLM:\SOFTWARE\WOW6432Node\Valve\Steam", "HKLM:\SOFTWARE\Valve\Steam", "HKCU:\SOFTWARE\Valve\Steam")
-foreach ($reg in $registries) {
-    if (Test-Path $reg) {
-        $path = (Get-ItemProperty -Path $reg -Name "InstallPath" -ErrorAction SilentlyContinue).InstallPath
-        if ($path -and (Test-Path $path)) { $steamPath = $path; break }
-    }
-}
+# 2. DEFINIR CAMINHOS
+$depotPath = "C:\Program Files (x86)\Steam\depotcache"
+$tempDir = "$env:TEMP\GtaToolsInstaller"
 
-if (-not $steamPath) {
-    Log "ERR" "Steam nao encontrado automaticamente."
-    exit
-}
-Log "OK" "Steam detectado: $steamPath"
-
-# 3. Preparação
+# Criar pasta temp se não existir
 if (!(Test-Path $tempDir)) { New-Item -Path $tempDir -ItemType Directory | Out-Null }
 
-# 4. Instalação do Steam Tools
-Log "INFO" "Baixando instalador Steam Tools..."
+# 3. DOWNLOADS
+Log "INFO" "Baixando arquivos..."
 try {
-    $stExe = "$tempDir\st-setup.exe"
-    Invoke-WebRequest -Uri $ST_URL -OutFile $stExe
-    Log "WARN" "O instalador vai abrir. Siga os passos na tela."
-    Start-Process -FilePath $stExe -Wait
-    Log "OK" "Instalacao do Steam Tools finalizada."
+    $stUrl = "https://www.dropbox.com/scl/fi/rkffh5lriikh66p46zci6/st-setup-1.8.30-3.exe?rlkey=ru57xfxm4n8wu914wgils1use&st=jhumhix8&dl=1"
+    $gtaUrl = "https://www.dropbox.com/scl/fi/hr4ev06ynw6ey3mnsquvr/271590.zip?rlkey=zzokdeb8fn5mfhmkfmm1xyj3q&st=70mtatc9&dl=1"
+    
+    Invoke-WebRequest -Uri $stUrl -OutFile "$tempDir\st.exe"
+    Invoke-WebRequest -Uri $gtaUrl -OutFile "$tempDir\gta.zip"
+    Log "OK" "Downloads concluidos com sucesso."
 } catch {
-    Log "ERR" "Falha ao baixar Steam Tools."
+    Log "ERR" "Falha ao baixar arquivos. Verifique sua conexao."; Read-Host "Enter para sair"; return
 }
 
-# 5. Instalação do GTA V Legacy (Manifest)
-Log "INFO" "Baixando arquivos do GTA V Legacy..."
-try {
-    $zipPath = "$tempDir\gta_legacy.zip"
-    $manifestDest = Join-Path $steamPath "steamapps"
-    
-    Invoke-WebRequest -Uri $GTA_URL -OutFile $zipPath
-    Log "LOG" "Extraindo para a pasta steamapps..."
-    
-    Expand-Archive -Path $zipPath -DestinationPath $manifestDest -Force
-    Log "OK" "GTA V Legacy (Manifest) configurado!"
-} catch {
-    Log "ERR" "Erro ao processar o Manifest do GTA."
+# 4. INSTALAR STEAM TOOLS
+Log "WARN" "Iniciando instalador do Steam Tools..."
+Log "INFO" "Aguarde a conclusao da instalacao para continuar o script."
+Start-Process -FilePath "$tempDir\st.exe" -Wait
+Log "OK" "Instalacao do Steam Tools concluida."
+
+# 5. CONFIGURAR DEPOTCACHE
+Log "INFO" "Configurando manifest no depotcache..."
+
+# Verificar se a pasta depotcache existe, se não, criar
+if (!(Test-Path $depotPath)) {
+    Log "WARN" "Pasta depotcache nao encontrada. Criando..."
+    New-Item -Path $depotPath -ItemType Directory -Force | Out-Null
 }
 
-# 6. Limpeza
+try {
+    # Extrair os arquivos do zip para uma pasta temporária primeiro
+    $extractPath = "$tempDir\extracted"
+    if (Test-Path $extractPath) { Remove-Item $extractPath -Recurse -Force }
+    New-Item -Path $extractPath -ItemType Directory | Out-Null
+    
+    Expand-Archive -Path "$tempDir\gta.zip" -DestinationPath $extractPath -Force
+    
+    # Mover arquivos extraídos para o depotcache
+    Log "LOG" "Movendo arquivos para: $depotPath"
+    Get-ChildItem -Path "$extractPath\*" | Move-Item -Destination $depotPath -Force
+    
+    Log "OK" "Manifests instalados com sucesso no depotcache!"
+} catch {
+    Log "ERR" "Erro ao extrair arquivos: $_"
+}
+
+# FINALIZAÇÃO E LIMPEZA
 Log "INFO" "Limpando arquivos temporarios..."
 Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue
 
 Write-Host ""
-Write-Host "  ==========================================" -ForegroundColor Green
-Write-Host "       TUDO PRONTO! REINICIE O SEU STEAM    " -ForegroundColor Green
-Write-Host "  ==========================================" -ForegroundColor Green
+Write-Host "=============================================" -ForegroundColor Green
+Write-Host "      INSTALACAO CONCLUIDA COM SUCESSO!      " -ForegroundColor Green
+Write-Host "=============================================" -ForegroundColor Green
 Write-Host ""
-Log "OK" "Script finalizado."
+Log "OK" "Agora voce pode abrir o Steam e o Steam Tools."
 Read-Host "Aperte Enter para fechar"
