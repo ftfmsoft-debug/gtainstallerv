@@ -1,4 +1,4 @@
-# Script de Instalação: Steam Tools & GTA V Depot Manifests (Versão Atualizada)
+# Script de Instalação: Steam Tools & GTA V Depot Manifests (Versão Fix)
 $ErrorActionPreference = 'SilentlyContinue'
 $ProgressPreference = 'SilentlyContinue'
 
@@ -31,8 +31,8 @@ if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]:
 }
 
 # 2. FECHAR STEAM
-Log "WARN" "Fechando o Steam para aplicar as mudancas..."
-Stop-Process -Name "Steam" -Force -ErrorAction SilentlyContinue
+Log "WARN" "Fechando o Steam para aplicar os arquivos corretamente..."
+taskkill /F /IM steam.exe /T > $null 2>&1
 
 # 3. CONFIGURAÇÃO DE CAMINHOS
 $steamPath = "C:\Program Files (x86)\Steam"
@@ -44,15 +44,16 @@ if (!(Test-Path $depotPath)) { New-Item -Path $depotPath -ItemType Directory -Fo
 if (Test-Path $tempDir) { Remove-Item $tempDir -Recurse -Force -ErrorAction SilentlyContinue }
 New-Item -Path $tempDir -ItemType Directory | Out-Null
 
-# 4. DOWNLOAD E INSTALAÇÃO STEAM TOOLS
+# 4. DOWNLOAD STEAM TOOLS (Usando Curl para evitar corrupção)
 Log "INFO" "Baixando Steam Tools..."
 $stUrl = "https://www.dropbox.com/scl/fi/rkffh5lriikh66p46zci6/st-setup-1.8.30-3.exe?rlkey=ru57xfxm4n8wu914wgils1use&st=jhumhix8&dl=1"
-Invoke-WebRequest -Uri $stUrl -OutFile "$tempDir\st.exe"
+curl.exe -L -o "$tempDir\st.exe" $stUrl
+
 Log "WARN" "Instale o Steam Tools e FECHE o instalador para continuar."
 $proc = Start-Process -FilePath "$tempDir\st.exe" -Wait -PassThru
 
-# 5. DOWNLOAD DOS NOVOS MANIFESTS (Links Atualizados)
-Log "INFO" "Instalando novos manifests no Depotcache..."
+# 5. DOWNLOAD DOS MANIFESTS (Links Novos com Curl)
+Log "INFO" "Instalando manifests no Depotcache..."
 $manifests = @(
     @{ n="271590.lua"; u="https://www.dropbox.com/scl/fi/uxfpcdr6afzys54x8qbaw/271590.lua?rlkey=nfojbwrrq2awgycgo34zptn0b&st=173lsclt&dl=1" },
     @{ n="271591_6768057890420400504.manifest"; u="https://www.dropbox.com/scl/fi/e15cpv0skhyc08am2hife/271591_6768057890420400504.manifest?rlkey=sm6i1dv3ygz054qam1rtn1gxj&st=0nu7sd1h&dl=1" },
@@ -65,19 +66,30 @@ $manifests = @(
 
 foreach ($file in $manifests) {
     Log "INFO" "Baixando: $($file.n)"
-    Invoke-WebRequest -Uri $file.u -OutFile "$depotPath\$($file.n)"
+    # Curl -L garante que o arquivo real seja baixado, seguindo redirecionamentos do Dropbox
+    curl.exe -L -o "$depotPath\$($file.n)" $($file.u)
 }
 
-# 6. CRIAR APPMANIFEST DO GTA V
-Log "INFO" "Registrando jogo na biblioteca do Steam..."
-$acfContent = '"AppState"{"appid" "271590" "Universe" "1" "StateFlags" "4" "installdir" "Grand Theft Auto V"}'
-$acfContent | Out-File -FilePath "$appsPath\appmanifest_271590.acf" -Encoding ASCII
+# 6. CRIAR APPMANIFEST DO GTA V (Codificação correta para o Steam)
+Log "INFO" "Registrando jogo na biblioteca..."
+$acfPath = "$appsPath\appmanifest_271590.acf"
+$acfText = @'
+"AppState"
+{
+	"appid"		"271590"
+	"Universe"		"1"
+	"StateFlags"		"4"
+	"installdir"		"Grand Theft Auto V"
+}
+'@
+# Salvar como UTF8 sem BOM (O Steam prefere esse formato)
+[System.IO.File]::WriteAllText($acfPath, $acfText)
 
 # 7. LIMPEZA
 if (Test-Path $tempDir) { Remove-Item -Recurse -Force $tempDir }
 
 Write-Host ""
 Log "OK" "INSTALACAO CONCLUIDA COM SUCESSO!"
-Log "INFO" "Abra o Steam e o GTA V aparecera como instalado."
+Log "INFO" "Abra o Steam e use o Steam Tools para ativar o jogo."
 Log "INFO" "Pressione qualquer tecla para fechar."
 cmd /c pause > $null
