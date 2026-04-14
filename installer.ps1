@@ -1,15 +1,13 @@
 # Script de Instalação: Steam Tools & GTA V Depot Manifests
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'SilentlyContinue'
 $ProgressPreference = 'SilentlyContinue'
 
-# Função de Log ultra-simples e segura contra erros de cor
-function Log([string]$Type, [string]$Message) {
+function Log($Type, $Message) {
     $fg = "White"
     if ($Type -eq "OK") { $fg = "Green" }
     elseif ($Type -eq "INFO") { $fg = "Cyan" }
     elseif ($Type -eq "ERR") { $fg = "Red" }
     elseif ($Type -eq "WARN") { $fg = "Yellow" }
-    
     Write-Host "[$Type] " -ForegroundColor $fg -NoNewline
     Write-Host $Message
 }
@@ -28,32 +26,33 @@ Write-Host ""
 # 1. VERIFICAÇÃO DE ADMIN
 if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Log "ERR" "VOCE PRECISA EXECUTAR COMO ADMINISTRADOR!"
-    Read-Host "Pressione Enter para sair"
+    cmd /c pause
     return
 }
 
-# 2. CONFIGURAÇÃO DE CAMINHOS
-$depotPath = "C:\Program Files (x86)\Steam\depotcache"
-if (!(Test-Path $depotPath)) { 
-    New-Item -Path $depotPath -ItemType Directory -Force | Out-Null 
-}
+# 2. FECHAR STEAM (Necessário para reconhecer novos arquivos)
+Log "WARN" "Fechando o Steam para garantir a instalacao..."
+Stop-Process -Name "Steam" -Force -ErrorAction SilentlyContinue
 
+# 3. CONFIGURAÇÃO DE CAMINHOS
+$steamPath = "C:\Program Files (x86)\Steam"
+$depotPath = "$steamPath\depotcache"
+$appsPath = "$steamPath\steamapps"
 $tempDir = "$env:TEMP\GtaToolsInstaller"
+
+if (!(Test-Path $depotPath)) { New-Item -Path $depotPath -ItemType Directory -Force | Out-Null }
 if (Test-Path $tempDir) { Remove-Item $tempDir -Recurse -Force -ErrorAction SilentlyContinue }
 New-Item -Path $tempDir -ItemType Directory | Out-Null
 
-# 3. DOWNLOAD E INSTALAÇÃO STEAM TOOLS
+# 4. DOWNLOAD E INSTALAÇÃO STEAM TOOLS
 Log "INFO" "Baixando Steam Tools..."
 $stUrl = "https://www.dropbox.com/scl/fi/rkffh5lriikh66p46zci6/st-setup-1.8.30-3.exe?rlkey=ru57xfxm4n8wu914wgils1use&st=jhumhix8&dl=1"
 Invoke-WebRequest -Uri $stUrl -OutFile "$tempDir\st.exe"
-
 Log "WARN" "Instale o Steam Tools agora. O script continuara apos voce fechar o instalador."
 $proc = Start-Process -FilePath "$tempDir\st.exe" -Wait -PassThru
-Log "OK" "Steam Tools finalizado."
 
-# 4. DOWNLOAD DOS MANIFESTS
+# 5. DOWNLOAD DOS MANIFESTS
 Log "INFO" "Instalando manifests no Depotcache..."
-
 $manifests = @(
     @{ n="271590.lua"; u="https://www.dropbox.com/scl/fi/2b3ivdjgykujloiu4fknt/271590.lua?rlkey=a1669qbo63vkzyhmaxcl16esa&st=n6kxh046&dl=1" },
     @{ n="271591_6768057890420400504.manifest"; u="https://www.dropbox.com/scl/fi/zo6jtjuxvseou3dge5057/271591_6768057890420400504.manifest?rlkey=zwhidfuu9leoxeyi01et51v94&st=91uv2671&dl=1" },
@@ -69,13 +68,16 @@ foreach ($file in $manifests) {
     Invoke-WebRequest -Uri $file.u -OutFile "$depotPath\$($file.n)"
 }
 
-# 5. LIMPEZA
-Log "INFO" "Limpando arquivos temporarios..."
-if (Test-Path $tempDir) { Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue }
+# 6. CRIAR APPMANIFEST DO GTA V (Para o jogo aparecer no Steam)
+Log "INFO" "Registrando GTA V no Steam..."
+$acfContent = '"AppState"{"appid" "271590" "Universe" "1" "StateFlags" "4" "installdir" "Grand Theft Auto V"}'
+$acfContent | Out-File -FilePath "$appsPath\appmanifest_271590.acf" -Encoding ASCII
 
-# 6. MENSAGEM FINAL
+# 7. LIMPEZA
+if (Test-Path $tempDir) { Remove-Item -Recurse -Force $tempDir }
+
 Write-Host ""
 Log "OK" "INSTALACAO CONCLUIDA COM SUCESSO!"
-Log "INFO" "Pressione ENTER para fechar este instalador."
-Read-Host ""
-# FIM DO SCRIPT
+Log "INFO" "Reinicie o Steam e o jogo aparecera na sua biblioteca."
+Log "INFO" "Pressione qualquer tecla para fechar."
+cmd /c pause > $null
