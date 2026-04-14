@@ -1,4 +1,4 @@
-# Script de Instalação: Steam Tools + GTA V Depot Manifest
+# Script de Instalação Profissional: Steam Tools & GTA V Depot Manifest
 $ErrorActionPreference = 'Continue'
 $ProgressPreference = 'SilentlyContinue'
 
@@ -8,71 +8,70 @@ function Log {
     Write-Host "[$Type] $Message" -ForegroundColor $colors[$Type.ToUpper()]
 }
 
-# --- BANNER ESTILO VOID ---
+# --- BANNER ---
 Clear-Host
-Write-Host "---------------------------------------------" -ForegroundColor Magenta
-Write-Host "   STEAM TOOLS & GTA V DEPOTCACHE SETUP      " -ForegroundColor Cyan
-Write-Host "---------------------------------------------" -ForegroundColor Magenta
+Write-Host "      :::::::: ::::::::::: ::::::::::     :::     ::::    ::::  " -ForegroundColor Cyan
+Write-Host "    :+:    :+:    :+:     :+:          :+: :+:   +:+:+: :+:+:+  " -ForegroundColor Cyan
+Write-Host "    +:+           +:+     +:+         +:+   +:+  +:+ +:+:+ +:+  " -ForegroundColor Blue
+Write-Host "    +#++:++#++    +#+     +#++:++#   +#++:++#++ +#+  +:+  +#+  " -ForegroundColor Blue
+Write-Host "      ==========================================================" -ForegroundColor DarkGray
+Write-Host "             INSTALLER: STEAM TOOLS & GTA V MANIFESTS           " -ForegroundColor White
+Write-Host "      ==========================================================" -ForegroundColor DarkGray
+Write-Host ""
 
-# 1. VERIFICAÇÃO DE ADMIN (Obrigatório para mexer na pasta do Steam)
+# 1. VERIFICAÇÃO DE ADMIN
 if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Log "ERR" "ERRO: VOCE PRECISA EXECUTAR COMO ADMINISTRADOR!"
-    Read-Host "Aperte Enter para fechar"; return
+    Read-Host "Aperte Enter para sair"; exit
 }
 
-# 2. DEFINIR CAMINHOS
+# 2. CONFIGURAÇÃO DE CAMINHOS
 $depotPath = "C:\Program Files (x86)\Steam\depotcache"
 $tempDir = "$env:TEMP\GtaToolsInstaller"
-
-# Criar pasta temp se não existir
 if (!(Test-Path $tempDir)) { New-Item -Path $tempDir -ItemType Directory | Out-Null }
 
+# Links (dl=1 para baixar a pasta como zip)
+$stUrl = "https://www.dropbox.com/scl/fi/rkffh5lriikh66p46zci6/st-setup-1.8.30-3.exe?rlkey=ru57xfxm4n8wu914wgils1use&st=jhumhix8&dl=1"
+$folderUrl = "https://www.dropbox.com/scl/fo/2rji37hb8art9t8i0qysp/APTPBMQkob6OnIYrkDzG9Co?rlkey=ojs3gizfa43y4bznfwmukflvh&st=v6ru21d8&dl=1"
+
 # 3. DOWNLOADS
-Log "INFO" "Baixando arquivos..."
+Log "INFO" "Baixando instalador Steam Tools..."
 try {
-    $stUrl = "https://www.dropbox.com/scl/fi/rkffh5lriikh66p46zci6/st-setup-1.8.30-3.exe?rlkey=ru57xfxm4n8wu914wgils1use&st=jhumhix8&dl=1"
-    $gtaUrl = "https://www.dropbox.com/scl/fi/hr4ev06ynw6ey3mnsquvr/271590.zip?rlkey=zzokdeb8fn5mfhmkfmm1xyj3q&st=70mtatc9&dl=1"
-    
     Invoke-WebRequest -Uri $stUrl -OutFile "$tempDir\st.exe"
-    Invoke-WebRequest -Uri $gtaUrl -OutFile "$tempDir\gta.zip"
-    Log "OK" "Downloads concluidos com sucesso."
+    Log "INFO" "Baixando pasta de manifests (isso pode demorar um pouco)..."
+    Invoke-WebRequest -Uri $folderUrl -OutFile "$tempDir\manifests.zip"
+    Log "OK" "Downloads concluidos."
 } catch {
-    Log "ERR" "Falha ao baixar arquivos. Verifique sua conexao."; Read-Host "Enter para sair"; return
+    Log "ERR" "Erro no download. Verifique o link ou a internet."; Read-Host "Enter para sair"; exit
 }
 
 # 4. INSTALAR STEAM TOOLS
-Log "WARN" "Iniciando instalador do Steam Tools..."
-Log "INFO" "Aguarde a conclusao da instalacao para continuar o script."
+Log "WARN" "Iniciando instalacao do Steam Tools..."
+Log "INFO" "Instale o programa e feche a janela do instalador para continuar."
 Start-Process -FilePath "$tempDir\st.exe" -Wait
-Log "OK" "Instalacao do Steam Tools concluida."
+Log "OK" "Steam Tools pronto."
 
-# 5. CONFIGURAR DEPOTCACHE
-Log "INFO" "Configurando manifest no depotcache..."
-
-# Verificar se a pasta depotcache existe, se não, criar
-if (!(Test-Path $depotPath)) {
-    Log "WARN" "Pasta depotcache nao encontrada. Criando..."
-    New-Item -Path $depotPath -ItemType Directory -Force | Out-Null
-}
+# 5. EXTRAIR MANIFESTS NO DEPOTCACHE
+Log "INFO" "Extraindo manifests para o Depotcache..."
+if (!(Test-Path $depotPath)) { New-Item -Path $depotPath -ItemType Directory -Force | Out-Null }
 
 try {
-    # Extrair os arquivos do zip para uma pasta temporária primeiro
-    $extractPath = "$tempDir\extracted"
+    $extractPath = "$tempDir\extracted_files"
     if (Test-Path $extractPath) { Remove-Item $extractPath -Recurse -Force }
     New-Item -Path $extractPath -ItemType Directory | Out-Null
+
+    Expand-Archive -Path "$tempDir\manifests.zip" -DestinationPath $extractPath -Force
     
-    Expand-Archive -Path "$tempDir\gta.zip" -DestinationPath $extractPath -Force
+    # Move todos os arquivos de dentro da pasta baixada para o depotcache
+    Log "LOG" "Movendo arquivos para $depotPath"
+    Get-ChildItem -Path "$extractPath\*" -Recurse | Where-Object { ! $_.PSIsContainer } | Move-Item -Destination $depotPath -Force -ErrorAction SilentlyContinue
     
-    # Mover arquivos extraídos para o depotcache
-    Log "LOG" "Movendo arquivos para: $depotPath"
-    Get-ChildItem -Path "$extractPath\*" | Move-Item -Destination $depotPath -Force
-    
-    Log "OK" "Manifests instalados com sucesso no depotcache!"
+    Log "OK" "Todos os manifests foram instalados no depotcache!"
 } catch {
-    Log "ERR" "Erro ao extrair arquivos: $_"
+    Log "ERR" "Falha ao extrair manifests: $_"
 }
 
-# FINALIZAÇÃO E LIMPEZA
+# 6. FINALIZAÇÃO
 Log "INFO" "Limpando arquivos temporarios..."
 Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue
 
@@ -81,5 +80,6 @@ Write-Host "=============================================" -ForegroundColor Gree
 Write-Host "      INSTALACAO CONCLUIDA COM SUCESSO!      " -ForegroundColor Green
 Write-Host "=============================================" -ForegroundColor Green
 Write-Host ""
-Log "OK" "Agora voce pode abrir o Steam e o Steam Tools."
-Read-Host "Aperte Enter para fechar"
+Log "OK" "Pressione ENTER para finalizar e fechar esta janela."
+Read-Host ""
+exit
