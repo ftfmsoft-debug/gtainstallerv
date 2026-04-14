@@ -1,8 +1,7 @@
-# Script de Instalação: Steam Tools & GTA V Manifests
+# Script de Instalação Profissional: Steam Tools & GTA V Depot Manifests
 $ErrorActionPreference = 'SilentlyContinue'
 $ProgressPreference = 'SilentlyContinue'
 
-# Função Log Corrigida (Sem erro de cor)
 function Log {
     param ([string]$Type, [string]$Message)
     $Type = $Type.ToUpper()
@@ -11,8 +10,6 @@ function Log {
     elseif ($Type -eq "INFO") { $fg = "Cyan" }
     elseif ($Type -eq "ERR") { $fg = "Red" }
     elseif ($Type -eq "WARN") { $fg = "Yellow" }
-    elseif ($Type -eq "LOG") { $fg = "Magenta" }
-    
     Write-Host "[$Type] $Message" -ForegroundColor $fg
 }
 
@@ -29,48 +26,57 @@ Write-Host ""
 
 # 1. VERIFICAÇÃO DE ADMIN
 if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Log "ERR" "EXECUTE COMO ADMINISTRADOR!"
+    Log "ERR" "VOCE PRECISA EXECUTAR COMO ADMINISTRADOR!"
     Read-Host "Aperte Enter para sair"; exit
 }
 
-# 2. CAMINHOS
+# 2. CONFIGURAÇÃO DE CAMINHOS
 $depotPath = "C:\Program Files (x86)\Steam\depotcache"
 if (!(Test-Path $depotPath)) { New-Item -Path $depotPath -ItemType Directory -Force | Out-Null }
+
 $tempDir = "$env:TEMP\GtaToolsInstaller"
 if (!(Test-Path $tempDir)) { New-Item -Path $tempDir -ItemType Directory | Out-Null }
 
-# Links
+# 3. LINKS DOS ARQUIVOS
 $stUrl = "https://www.dropbox.com/scl/fi/rkffh5lriikh66p46zci6/st-setup-1.8.30-3.exe?rlkey=ru57xfxm4n8wu914wgils1use&st=jhumhix8&dl=1"
-$folderUrl = "https://www.dropbox.com/scl/fo/2rji37hb8art9t8i0qysp/APTPBMQkob6OnIYrkDzG9Co?rlkey=ojs3gizfa43y4bznfwmukflvh&st=v6ru21d8&dl=1"
 
-# 3. DOWNLOADS
-Log "INFO" "Baixando Steam Tools..."
-Invoke-WebRequest -Uri $stUrl -OutFile "$tempDir\st.exe"
-
-Log "INFO" "Baixando Manifests..."
-Invoke-WebRequest -Uri $folderUrl -OutFile "$tempDir\manifests.zip"
+$manifests = @(
+    @{ name="271590.lua"; url="https://www.dropbox.com/scl/fi/2b3ivdjgykujloiu4fknt/271590.lua?rlkey=a1669qbo63vkzyhmaxcl16esa&st=n6kxh046&dl=1" },
+    @{ name="271591_6768057890420400504.manifest"; url="https://www.dropbox.com/scl/fi/zo6jtjuxvseou3dge5057/271591_6768057890420400504.manifest?rlkey=zwhidfuu9leoxeyi01et51v94&st=91uv2671&dl=1" },
+    @{ name="271592_8238436718767500927.manifest"; url="https://www.dropbox.com/scl/fi/6sznfot5eb4g8j10a0wm7/271592_8238436718767500927.manifest?rlkey=n58mc0grcgl095drgaodxxj0x&st=xe6uv0t3&dl=1" },
+    @{ name="271593_2967789647252082634.manifest"; url="https://www.dropbox.com/scl/fi/1lkdmuu6ql2g2i9phd9nm/271593_2967789647252082634.manifest?rlkey=3h4j65hmhwjzmnjyia9wumuqi&st=e9ld03gi&dl=1" },
+    @{ name="271594_8854874882423166314.manifest"; url="https://www.dropbox.com/scl/fi/wyffhxej965kx74g50pwv/271594_8854874882423166314.manifest?rlkey=n189lywe18z3jt1rx5tmpf8fm&st=vujog6ro&dl=1" },
+    @{ name="271595_1376135673068470825.manifest"; url="https://www.dropbox.com/scl/fi/ckrrqgcainu79i6o3d5df/271595_1376135673068470825.manifest?rlkey=tiyn9eycxf2ut4kz5ebv29v1p&st=f73mo5pu&dl=1" },
+    @{ name="1899671_274155245002712969.manifest"; url="https://www.dropbox.com/scl/fi/by2e8jdmgaxuqhqswj7dx/1899671_274155245002712969.manifest?rlkey=dh5s423z3y3gnhfqyez5okpi8&st=lsku86hy&dl=1" }
+)
 
 # 4. INSTALAÇÃO STEAM TOOLS
-Log "WARN" "Iniciando instalacao do Steam Tools..."
+Log "INFO" "Baixando Steam Tools..."
+Invoke-WebRequest -Uri $stUrl -OutFile "$tempDir\st.exe"
+Log "WARN" "Instale o Steam Tools e FECHE o instalador para continuar."
 Start-Process -FilePath "$tempDir\st.exe" -Wait
-Log "OK" "Steam Tools concluido."
+Log "OK" "Steam Tools processado."
 
-# 5. MOVER MANIFESTS (Sem extrair, conforme solicitado)
-Log "INFO" "Movendo manifests para o Depotcache..."
-try {
-    # Se você quiser que o conteúdo seja extraído automaticamente do zip do dropbox para o depotcache:
-    Expand-Archive -Path "$tempDir\manifests.zip" -DestinationPath $depotPath -Force
-    Log "OK" "Manifests movidos para $depotPath"
-} catch {
-    Log "ERR" "Erro ao mover arquivos."
+# 5. DOWNLOAD DOS MANIFESTS DIRETAMENTE NA PASTA
+Log "INFO" "Instalando Manifests no Depotcache..."
+foreach ($file in $manifests) {
+    Log "INFO" "Baixando $($file.name)..."
+    try {
+        Invoke-WebRequest -Uri $file.url -OutFile "$depotPath\$($file.name)"
+    } catch {
+        Log "ERR" "Falha ao baixar $($file.name)"
+    }
 }
 
 # 6. FINALIZAÇÃO
-Log "INFO" "Limpando temporarios..."
+Log "INFO" "Limpando arquivos temporarios..."
 Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue
 
 Write-Host ""
-Log "OK" "INSTALACAO CONCLUIDA!"
-Log "INFO" "Pressione ENTER para fechar."
+Write-Host "=============================================" -ForegroundColor Green
+Write-Host "      INSTALACAO CONCLUIDA COM SUCESSO!      " -ForegroundColor Green
+Write-Host "=============================================" -ForegroundColor Green
+Write-Host ""
+Log "OK" "Pressione ENTER para fechar o instalador."
 Read-Host ""
 exit
